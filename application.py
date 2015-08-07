@@ -34,8 +34,7 @@ FLASK_DEBUG = 'false' if os.environ.get('FLASK_DEBUG') is None else os.environ.g
 # Setup command line options for local testing
 parser = argparse.ArgumentParser(description='Quotes application', prog='application.py')
 parser.add_argument(    '--config',
-                        help='Path to the config file containing application settings. Cannot be used if the APP_CONFIG environment variable is set instead',
-                        default=__name__ + '.config')
+                        help='Path to the config file containing application settings. Cannot be used if the APP_CONFIG environment variable is set instead')
 args = parser.parse_args()
 
 configFile = args.config
@@ -51,7 +50,8 @@ application = flask.Flask(__name__)
 application.config.from_object(__name__)
 
 # Load config values specified above
-application.config.from_pyfile(configFile)
+if args.config:
+    application.config.from_pyfile(configFile)
 
 # Load configuration vals from a file
 application.config.from_envvar('APP_CONFIG', silent=True)
