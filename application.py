@@ -68,7 +68,7 @@ if application.config['DYNAMODB_AWS_REGION'] == 'LOCAL':
                                     port=application.config['LOCAL_DB_PORT']
                                     )
 else:
-    ddb_conn = dynamodb2.connect_to_region(application.config['AWS_REGION'])
+    ddb_conn = dynamodb2.connect_to_region(application.config['DYNAMODB_AWS_REGION'])
 
 ddb_table = Table(table_name=application.config['QUOTES_TABLE'],
                   connection=ddb_conn)
