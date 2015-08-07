@@ -15,6 +15,8 @@
 import os
 import sys
 import json
+import argparse
+from ConfigParser import ConfigParser
 
 import flask
 from flask import request, Response
@@ -29,11 +31,27 @@ from boto import sns
 THEME = 'default' if os.environ.get('THEME') is None else os.environ.get('THEME')
 FLASK_DEBUG = 'false' if os.environ.get('FLASK_DEBUG') is None else os.environ.get('FLASK_DEBUG')
 
+# Setup command line options for local testing
+parser = argparse.ArgumentParser(description='Quotes application', prog='application.py')
+parser.add_argument(    '--config',
+                        help='Path to the config file containing application settings. Cannot be used if the APP_CONFIG environment variable is set instead',
+                        default=__name__ + '.config')
+args = parser.parse_args()
+
+configFile = args.config
+if 'APP_CONFIG' in os.environ:
+    if configFile is not None:
+        raise Exception('Cannot specify --config when setting the APP_CONFIG environment variable')
+    configFile = os.environ['APP_CONFIG']
+
 # Create the Flask app
 application = flask.Flask(__name__)
 
 # Load config values specified above
 application.config.from_object(__name__)
+
+# Load config values specified above
+application.config.from_pyfile(configFile)
 
 # Load configuration vals from a file
 application.config.from_envvar('APP_CONFIG', silent=True)
@@ -42,12 +60,27 @@ application.config.from_envvar('APP_CONFIG', silent=True)
 application.debug = application.config['FLASK_DEBUG'] in ['true', 'True']
 
 # Connect to DynamoDB and get ref to Table
-ddb_conn = dynamodb2.connect_to_region(application.config['AWS_REGION'])
-ddb_table = Table(table_name=application.config['STARTUP_SIGNUP_TABLE'],
+if application.config['DYNAMODB_AWS_REGION'] == 'LOCAL':
+    from boto.dynamodb2.layer1 import DynamoDBConnection
+    ddb_conn = DynamoDBConnection(  aws_access_key_id=application.config['LOCAL_DB_NAME'],
+                                    aws_secret_access_key=application.config['LOCAL_DB_NAME'],
+                                    host=application.config['LOCAL_DB_HOST'],
+                                    port=application.config['LOCAL_DB_PORT']
+                                    )
+else:
+    ddb_conn = dynamodb2.connect_to_region(application.config['AWS_REGION'])
+
+ddb_table = Table(table_name=application.config['QUOTES_TABLE'],
                   connection=ddb_conn)
 
 # Connect to SNS
-sns_conn = sns.connect_to_region(application.config['AWS_REGION'])
+if application.config['SNS_AWS_REGION'] == 'LOCAL':
+    class MockSNS(object):
+        def publish(self, topic, message, subject):
+            print "topic: %s, message: %s, subject %s" % (topic, message, subject)
+    sns_conn = MockSNS()
+else:
+    sns_conn = sns.connect_to_region(application.config['SNS_AWS_REGION'])
 
 
 @application.route('/')
@@ -78,10 +111,14 @@ def store_in_dynamo(signup_data):
 
 def publish_to_sns(signup_data):
     try:
-        sns_conn.publish(application.config['NEW_SIGNUP_TOPIC'], json.dumps(signup_data), "New signup: %s" % signup_data['email'])
+        sns_conn.publish(application.config['QUOTES_TOPIC'], json.dumps(signup_data), "New signup: %s" % signup_data['email'])
     except Exception as ex:
         sys.stderr.write("Error publishing subscription message to SNS: %s" % ex.message)
 
 
 if __name__ == '__main__':
-    application.run(host='0.0.0.0')
+    print "In Main....."
+    if application.config['DYNAMODB_AWS_REGION'] == 'LOCAL':
+        application.run(host=application.config['LOCAL_HOST'],port=application.config['LOCAL_PORT'])
+    else:
+        application.run(host='0.0.0.0')

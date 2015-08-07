@@ -398,6 +398,7 @@ p {
   font-size: 16.099999999999998px;
   font-weight: 200;
   line-height: 1.4;
+  color: white;
 }
 
 @media (min-width: 768px) {
@@ -4923,16 +4924,18 @@ a.list-group-item.active > .badge,
   font-weight: 200;
   line-height: 2.1428571435;
   color: inherit;
+  background: url(../../../images/bacon_blog_post.jpg);
   background-color: #eeeeee;
 }
 
 .jumbotron h1 {
   line-height: 1;
-  color: inherit;
+  color: white;
 }
 
 .jumbotron p {
   line-height: 1.4;
+  color: white;
 }
 
 .container .jumbotron {
